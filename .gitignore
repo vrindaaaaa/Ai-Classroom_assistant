@@ -1,0 +1,21 @@
+# Environment
+.env
+
+# Python
+.venv/
+venv/
+__pycache__/
+*.pyc
+
+# Database
+*.db
+
+# Node
+node_modules/
+dist/
+
+# Uploaded files
+uploads/
+
+# VS Code
+.vscode/
