@@ -6,10 +6,25 @@ const uploadService = {
     formData.append("title", title || file.name);
     formData.append("file", file);
 
-    const response = await API.post("/documents/upload", formData, {
-      onUploadProgress,
+    console.log("[uploadService] POST /documents/upload", {
+      title,
+      fileName: file?.name,
+      fileSize: file?.size,
+      fileType: file?.type,
     });
-    return response.data;
+
+    try {
+      const response = await API.post("/documents/upload", formData, {
+        onUploadProgress,
+      });
+      console.log("[uploadService] response.data =", response.data);
+      return response.data;
+    } catch (error) {
+      console.error("[uploadService] upload error:", error);
+      console.error("[uploadService] error.response:", error.response);
+      console.error("[uploadService] error.response?.data:", error.response?.data);
+      throw error;
+    }
   },
 
   getDocuments: async () => {
@@ -33,6 +48,11 @@ const uploadService = {
       responseType: "blob",
     });
     return response;
+  },
+
+  generateExplanation: async (documentId) => {
+    const response = await API.post(`/documents/${documentId}/explanation`);
+    return response.data;
   },
 };
 

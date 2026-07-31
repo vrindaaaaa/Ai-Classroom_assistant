@@ -20,9 +20,12 @@ caller only has to catch a single exception type.
 """
 from __future__ import annotations
 
+import logging
 import re
 from pathlib import Path
 from typing import Union
+
+logger = logging.getLogger(__name__)
 
 # ---------------------------------------------------------------------------
 # Optional dependencies – each is guarded so unit tests can mock them out
@@ -99,9 +102,11 @@ def extract_pdf_text(file_path: Union[str, Path]) -> str:
             "PyMuPDF is not installed. Run: pip install pymupdf"
         )
 
+    logger.info("[extractor] opening PDF file=%s", file_path)
     try:
         doc = fitz.open(str(file_path))
     except Exception as exc:
+        logger.error("[extractor] failed to open PDF file=%s error=%s", file_path, exc)
         raise DocumentExtractionError(
             f"Unable to open PDF file '{file_path}': {exc}"
         ) from exc
@@ -113,8 +118,11 @@ def extract_pdf_text(file_path: Union[str, Path]) -> str:
             if page_text and page_text.strip():
                 pages.append(page_text)
         raw = "\n".join(pages)
-        return _clean_text(raw)
+        cleaned = _clean_text(raw)
+        logger.info("[extractor] PDF extraction succeeded file=%s pages=%d chars=%d", file_path, len(pages), len(cleaned))
+        return cleaned
     except Exception as exc:
+        logger.error("[extractor] failed to extract PDF file=%s error=%s", file_path, exc)
         raise DocumentExtractionError(
             f"Failed to extract text from PDF '{file_path}': {exc}"
         ) from exc
@@ -148,9 +156,11 @@ def extract_docx_text(file_path: Union[str, Path]) -> str:
             "python-docx is not installed. Run: pip install python-docx"
         )
 
+    logger.info("[extractor] opening DOCX file=%s", file_path)
     try:
         doc = DocxDocument(str(file_path))
     except Exception as exc:
+        logger.error("[extractor] failed to open DOCX file=%s error=%s", file_path, exc)
         raise DocumentExtractionError(
             f"Unable to open DOCX file '{file_path}': {exc}"
         ) from exc
@@ -161,7 +171,9 @@ def extract_docx_text(file_path: Union[str, Path]) -> str:
         if para.text and para.text.strip()
     ]
     raw = "\n".join(paragraphs)
-    return _clean_text(raw)
+    cleaned = _clean_text(raw)
+    logger.info("[extractor] DOCX extraction succeeded file=%s paragraphs=%d chars=%d", file_path, len(paragraphs), len(cleaned))
+    return cleaned
 
 
 # ---------------------------------------------------------------------------
@@ -193,9 +205,11 @@ def extract_pptx_text(file_path: Union[str, Path]) -> str:
             "python-pptx is not installed. Run: pip install python-pptx"
         )
 
+    logger.info("[extractor] opening PPTX file=%s", file_path)
     try:
         prs = Presentation(str(file_path))
     except Exception as exc:
+        logger.error("[extractor] failed to open PPTX file=%s error=%s", file_path, exc)
         raise DocumentExtractionError(
             f"Unable to open PPTX file '{file_path}': {exc}"
         ) from exc
@@ -210,7 +224,9 @@ def extract_pptx_text(file_path: Union[str, Path]) -> str:
             slide_blocks.append(f"--- Slide {slide_num} ---\n" + "\n".join(slide_lines))
 
     raw = "\n\n".join(slide_blocks)
-    return _clean_text(raw)
+    cleaned = _clean_text(raw)
+    logger.info("[extractor] PPTX extraction succeeded file=%s slides=%d chars=%d", file_path, len(slide_blocks), len(cleaned))
+    return cleaned
 
 
 # ---------------------------------------------------------------------------
@@ -246,6 +262,7 @@ def extract_text(file_path: Union[str, Path]) -> str:
             f"Supported types: {', '.join(sorted(SUPPORTED_EXTENSIONS))}"
         )
 
+    logger.info("[extractor] extracting text from file=%s extension=%s", file_path, extension)
     if extension == "pdf":
         return extract_pdf_text(path)
     if extension == "docx":

@@ -1,6 +1,9 @@
 import React, { useState, useRef, useEffect } from "react";
-import { Send, Sparkles, User, FileText, AlertCircle } from "lucide-react";
+import { Send, Sparkles, User, FileText, AlertCircle, ChevronDown } from "lucide-react";
+import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
 import chatService from "../services/chatService";
+import uploadService from "../services/uploadService";
 import { useToast } from "../context/ToastContext";
 import Card from "../components/Card";
 import PageHeader from "../components/PageHeader";
@@ -11,6 +14,9 @@ export default function ChatPage() {
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
+  const [documents, setDocuments] = useState([]);
+  const [selectedDocId, setSelectedDocId] = useState("");
+  const [loadingDocs, setLoadingDocs] = useState(true);
   const messagesEndRef = useRef(null);
 
   const scrollToBottom = () => {
@@ -20,6 +26,23 @@ export default function ChatPage() {
   useEffect(() => {
     scrollToBottom();
   }, [messages, loading]);
+
+  useEffect(() => {
+    const fetchDocuments = async () => {
+      try {
+        const data = await uploadService.getDocuments();
+        setDocuments(data || []);
+        if (data && data.length > 0 && !selectedDocId) {
+          setSelectedDocId(String(data[0].id));
+        }
+      } catch (err) {
+        console.error("Failed to fetch documents for chat", err);
+      } finally {
+        setLoadingDocs(false);
+      }
+    };
+    fetchDocuments();
+  }, []);
 
   const handleSend = async (e) => {
     e.preventDefault();
@@ -32,7 +55,14 @@ export default function ChatPage() {
     setLoading(true);
 
     try {
-      const data = await chatService.askQuestion(questionText);
+      const conversationHistory = messages
+        .filter((msg) => !msg.isError)
+        .slice(-6)
+        .map((msg) => ({
+          role: msg.isUser ? "user" : "assistant",
+          content: msg.text,
+        }));
+      const data = await chatService.askQuestion(questionText, selectedDocId ? parseInt(selectedDocId) : undefined, conversationHistory);
       const botMessage = {
         text: data.answer,
         isUser: false,
@@ -44,10 +74,14 @@ export default function ChatPage() {
       console.error("Chat request failed", error);
       let errorMsg = "Unable to get an answer right now.";
       if (error.response?.status === 404) {
-        errorMsg = "No relevant document details found in your workspace database. Please upload documents in the Documents panel first.";
+        errorMsg = error.response?.data?.detail || "No relevant document details found in your workspace database. Please upload documents in the Documents panel first.";
+      } else if (error.response?.status === 422) {
+        errorMsg = error.response?.data?.detail || "The selected document has no extractable text.";
+      } else if (error.response?.data?.detail) {
+        errorMsg = error.response.data.detail;
       }
       addToast(errorMsg, "error");
-      
+
       const botErrorMessage = {
         text: errorMsg,
         isUser: false,
@@ -60,6 +94,10 @@ export default function ChatPage() {
     }
   };
 
+  const handleDocChange = (e) => {
+    setSelectedDocId(e.target.value);
+  };
+
   return (
     <div className="flex flex-col h-[calc(100vh-140px)]">
       
@@ -68,6 +106,36 @@ export default function ChatPage() {
         title="Document AI Chat"
         description="Chat directly with your uploaded notes and textbooks. Pull references automatically."
       />
+
+      {/* Document Selector */}
+      <Card className="mt-4">
+        <div className="flex items-center gap-3">
+          <label htmlFor="chat-doc-select" className="text-sm font-semibold text-slate-700 whitespace-nowrap">
+            <FileText size={16} className="inline mr-1" />
+            Select Document:
+          </label>
+          <div className="relative flex-1">
+            <select
+              id="chat-doc-select"
+              value={selectedDocId}
+              onChange={handleDocChange}
+              disabled={loadingDocs || documents.length === 0}
+              className="w-full px-4 py-2.5 rounded-xl border border-slate-200 bg-white outline-none transition-all duration-200 text-slate-900 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 appearance-none"
+            >
+              <option value="">— Select a document —</option>
+              {documents.map((doc) => (
+                <option key={doc.id} value={doc.id}>
+                  {doc.title || doc.filename} ({doc.file_type?.toUpperCase()})
+                </option>
+              ))}
+            </select>
+            <ChevronDown size={16} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+          </div>
+        </div>
+        {documents.length === 0 && !loadingDocs && (
+          <p className="text-xs text-slate-500 mt-2">No documents uploaded yet. Upload a document first.</p>
+        )}
+      </Card>
 
       {/* Chat Messages Panel */}
       <div className="flex-1 overflow-y-auto p-4 space-y-4 border border-slate-100 rounded-2xl bg-white dark:bg-slate-900 mt-4 shadow-sm">
@@ -78,7 +146,7 @@ export default function ChatPage() {
             </div>
             <h3 className="text-lg font-semibold text-slate-900 dark:text-white">Ask your materials</h3>
             <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
-              Type a question below to analyze and query details across all the documents in your workspace.
+              Type a question below to analyze and query details across your selected document.
             </p>
           </div>
         ) : (
@@ -112,10 +180,18 @@ export default function ChatPage() {
                   <div className="text-sm font-semibold text-slate-800 dark:text-slate-200">
                     {msg.isUser ? "You" : "AI Assistant"}
                   </div>
-                  <p className="text-sm text-slate-700 dark:text-slate-300 leading-relaxed whitespace-pre-wrap">
-                    {msg.text}
-                  </p>
-                  
+                  {msg.isError ? (
+                    <p className="text-sm text-red-700 dark:text-red-300 leading-relaxed whitespace-pre-wrap">
+                      {msg.text}
+                    </p>
+                  ) : (
+                    <div className="text-sm text-slate-700 dark:text-slate-300 leading-relaxed">
+                      <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                        {msg.text}
+                      </ReactMarkdown>
+                    </div>
+                  )}
+
                   {/* Citations / Sources */}
                   {msg.sources && msg.sources.length > 0 && (
                     <div className="flex flex-wrap items-center gap-2 mt-3 pt-3 border-t border-slate-100 dark:border-slate-800 text-xs text-slate-500">

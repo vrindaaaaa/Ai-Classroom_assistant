@@ -38,6 +38,7 @@ class Document(Base):
 
     owner = relationship("User", back_populates="documents")
     chunks = relationship("DocumentChunk", back_populates="document", cascade="all, delete-orphan")
+    quizzes = relationship("Quiz", back_populates="document", cascade="all, delete-orphan")
 
     @property
     def extracted_text(self) -> str:
@@ -51,6 +52,9 @@ class DocumentChunk(Base):
     document_id = Column(Integer, ForeignKey("documents.id"), nullable=False)
     content = Column(Text, nullable=False)
     meta_data = Column(JSON, default={})
+    embedding = Column(JSON, default=list)
+    chunk_index = Column(Integer, default=0)
+    page_number = Column(Integer, nullable=True)
 
     document = relationship("Document", back_populates="chunks")
 
@@ -60,12 +64,14 @@ class Quiz(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     owner_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    document_id = Column(Integer, ForeignKey("documents.id"), nullable=True)
     title = Column(String(255), nullable=False)
     difficulty = Column(String(40), default="medium")
     questions = Column(JSON, default=list)
     created_at = Column(DateTime, default=datetime.utcnow)
 
     owner = relationship("User", back_populates="quizzes")
+    document = relationship("Document", back_populates="quizzes")
     results = relationship("QuizResult", back_populates="quiz", cascade="all, delete-orphan")
 
 
@@ -75,8 +81,16 @@ class QuizResult(Base):
     id = Column(Integer, primary_key=True, index=True)
     user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
     quiz_id = Column(Integer, ForeignKey("quizzes.id"), nullable=False)
+    document_id = Column(Integer, ForeignKey("documents.id"), nullable=True)
+    quiz_title = Column(String(255), nullable=False, default="")
+    difficulty = Column(String(40), default="medium")
     score = Column(Float, nullable=False)
+    total_questions = Column(Integer, default=0)
+    percentage = Column(Float, default=0.0)
+    time_taken = Column(Integer, default=0)
+    answers = Column(JSON, default=dict)
     feedback = Column(Text, default="")
+    status = Column(String(40), default="completed")
     created_at = Column(DateTime, default=datetime.utcnow)
 
     quiz = relationship("Quiz", back_populates="results")
@@ -87,13 +101,16 @@ class StudyPlan(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    document_id = Column(Integer, ForeignKey("documents.id"), nullable=True)
     title = Column(String(255), nullable=False)
     exam_date = Column(String(80), nullable=False)
     hours_per_day = Column(Integer, nullable=False)
     steps = Column(JSON, default=list)
+    generated_plan = Column(JSON, default=dict)
     created_at = Column(DateTime, default=datetime.utcnow)
 
     owner = relationship("User", back_populates="study_plans")
+    document = relationship("Document")
 
 
 class Transcript(Base):
@@ -138,8 +155,10 @@ class ChatHistory(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    document_id = Column(Integer, ForeignKey("documents.id"), nullable=True)
     message = Column(Text, nullable=False)
     response = Column(Text, default="")
     created_at = Column(DateTime, default=datetime.utcnow)
 
     owner = relationship("User", back_populates="chat_history")
+    document = relationship("Document")

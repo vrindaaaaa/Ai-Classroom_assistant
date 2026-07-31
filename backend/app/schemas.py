@@ -65,6 +65,11 @@ class QuizCreate(BaseSchema):
     material: str
 
 
+class DocumentQuizGenerate(BaseSchema):
+    title: str
+    difficulty: str = "medium"
+
+
 class QuizOut(BaseSchema):
     id: int
     title: str
@@ -77,31 +82,46 @@ class QuizResultCreate(BaseSchema):
     quiz_id: int
     score: float
     feedback: str = ""
+    selected_answers: Dict[str, str] = {}
+    time_taken: int = 0
+    document_id: int | None = None
+    quiz_title: str = ""
+    difficulty: str = "medium"
 
 
 class QuizResultOut(BaseSchema):
     id: int
     user_id: int
     quiz_id: int
+    document_id: int | None = None
+    quiz_title: str = ""
+    difficulty: str = "medium"
     score: float
-    feedback: str
+    total_questions: int = 0
+    percentage: float = 0.0
+    time_taken: int = 0
+    answers: Dict[str, str] = {}
+    feedback: str = ""
     created_at: datetime
 
 
 class StudyPlanCreate(BaseSchema):
-    user_id: int
+    user_id: int | None = None
     title: str
     exam_date: str
     hours_per_day: int
+    document_id: int | None = None
 
 
 class StudyPlanOut(BaseSchema):
     id: int
     user_id: int
+    document_id: int | None = None
     title: str
     exam_date: str
     hours_per_day: int
     steps: List[Dict[str, Any]]
+    generated_plan: Dict[str, Any]
     created_at: datetime
 
 
@@ -118,6 +138,8 @@ class NoteOut(NoteCreate):
 
 class ChatRequest(BaseSchema):
     question: str
+    document_id: int | None = None
+    conversation_history: List[Dict[str, str]] = []
 
 
 class ChatResponse(BaseSchema):

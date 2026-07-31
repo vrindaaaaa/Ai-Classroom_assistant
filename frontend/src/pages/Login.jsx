@@ -127,18 +127,18 @@ export default function Login() {
             Intelligent Learning Redefined
           </h3>
           <p className="text-indigo-200/80 text-lg leading-relaxed mb-8">
-            Harness custom study plans, instantaneous quiz generations, handwritten notes extracts, and multi-file chat in one clean workspace.
+            Harness custom study plans, instantaneous quiz generations, and multi-file chat in one clean workspace.
           </p>
 
           {/* Quick Metrics display */}
           <div className="grid grid-cols-2 gap-4 text-left">
             <div className="p-5 rounded-2xl bg-white/5 border border-white/10 backdrop-blur-sm">
-              <span className="text-xs font-semibold text-indigo-300 uppercase tracking-wider">Fast Extraction</span>
-              <p className="mt-1 text-sm text-slate-300 leading-normal">OCR digitizes notes & images in milliseconds.</p>
-            </div>
-            <div className="p-5 rounded-2xl bg-white/5 border border-white/10 backdrop-blur-sm">
               <span className="text-xs font-semibold text-indigo-300 uppercase tracking-wider">Document Chat</span>
               <p className="mt-1 text-sm text-slate-300 leading-normal">Extract information from slides or text resources.</p>
+            </div>
+            <div className="p-5 rounded-2xl bg-white/5 border border-white/10 backdrop-blur-sm">
+              <span className="text-xs font-semibold text-indigo-300 uppercase tracking-wider">Quiz Generator</span>
+              <p className="mt-1 text-sm text-slate-300 leading-normal">Auto-generate quizzes from your uploaded documents.</p>
             </div>
           </div>
         </div>

@@ -233,14 +233,16 @@ export default function UploadPage() {
         }
       );
 
+      console.log("[UploadPage] response.data =", newDoc);
       setUploadResult(newDoc);            // ← store for result panel
       addToast(`Successfully uploaded "${newDoc.title}"`, "success");
       setTitle("");
       resetFileInput();
       await fetchDocuments();
     } catch (err) {
-      console.error("Upload failed", err);
-      const raw = err.response?.data?.detail;
+      console.error("[UploadPage] Upload failed", err);
+      console.error("[UploadPage] error.response:", err.response);
+      const raw = err.response?.data?.detail || err.response?.data?.error;
       let message;
       if (Array.isArray(raw)) {
         message = raw.map((e) => e.msg || JSON.stringify(e)).join("; ");

@@ -20,19 +20,14 @@ import PageHeader from "../components/PageHeader";
 export default function Dashboard() {
   const { user } = useAuth();
   const [data, setData] = useState(null);
-  const [analytics, setAnalytics] = useState(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const fetchDashboardData = async () => {
       try {
         setLoading(true);
-        const [dashRes, analyticRes] = await Promise.all([
-          dashboardService.getMetrics(),
-          dashboardService.getAnalytics(),
-        ]);
+        const dashRes = await dashboardService.getMetrics();
         setData(dashRes);
-        setAnalytics(analyticRes);
       } catch (error) {
         console.error("Failed to load dashboard metrics", error);
       } finally {
@@ -73,32 +68,32 @@ export default function Dashboard() {
           <>
             <StatCard
               title="Uploaded Documents"
-              value={data?.document_count ?? 0}
+              value={data?.total_documents ?? 0}
               icon={FileText}
               color="indigo"
               description="PDFs, note files, worksheets"
             />
             <StatCard
               title="Quizzes Generated"
-              value={data?.quiz_count ?? 0}
+              value={data?.total_quizzes ?? 0}
               icon={HelpCircle}
               color="violet"
               description="Mock tests and practice reviews"
             />
             <StatCard
               title="Study Plans"
-              value={data?.study_plan_count ?? 0}
+              value={data?.total_study_plans ?? 0}
               icon={Calendar}
               color="emerald"
               description="Active timelines and schedules"
             />
             <StatCard
               title="Learning Streak"
-              value={analytics?.learning_streak ? `${analytics.learning_streak} Days` : "0 Days"}
+              value={data?.learning_streak ? `${data.learning_streak} Days` : "0 Days"}
               icon={Flame}
               color="amber"
               description="Consecutive practice days"
-              trend={analytics?.learning_streak > 0 ? "Active" : null}
+              trend={data?.learning_streak > 0 ? "Active" : null}
             />
           </>
         )}
@@ -137,7 +132,7 @@ export default function Dashboard() {
                     <div className="flex-1 min-w-0">
                       <h4 className="font-bold text-sm text-slate-900 truncate">{doc.title}</h4>
                       <p className="text-xs text-slate-500 mt-1 truncate">
-                        Type: {doc.file_type.toUpperCase()} • {doc.summary}
+                        Type: {doc.file_type?.toUpperCase()} • Uploaded: {doc.created_at ? new Date(doc.created_at).toLocaleDateString() : 'Unknown'}
                       </p>
                     </div>
                   </div>
@@ -192,7 +187,7 @@ export default function Dashboard() {
             ) : (
               <div className="flex flex-col items-center justify-center py-6 text-center">
                 <div className="relative flex items-center justify-center h-28 w-28 rounded-full bg-slate-50 border-4 border-indigo-600 text-indigo-600 font-extrabold text-2xl shadow-sm">
-                  {analytics?.average_score ?? 0}%
+                  {data?.average_score ?? 0}%
                 </div>
                 <h4 className="mt-4 font-bold text-slate-900 text-base">Average Quiz Accuracy</h4>
                 <p className="text-xs text-slate-500 mt-1 max-w-[180px]">
@@ -215,10 +210,6 @@ export default function Dashboard() {
               <Link to="/chat" className="p-3.5 rounded-xl border border-slate-100 hover:bg-slate-50 dark:hover:bg-slate-800 transition">
                 <Sparkles className="mx-auto text-indigo-600 mb-1.5" size={18} />
                 AI Chat
-              </Link>
-              <Link to="/ocr" className="p-3.5 rounded-xl border border-slate-100 hover:bg-slate-50 dark:hover:bg-slate-800 transition">
-                <Plus className="mx-auto text-violet-600 mb-1.5" size={18} />
-                OCR Notes
               </Link>
               <Link to="/transcription" className="p-3.5 rounded-xl border border-slate-100 hover:bg-slate-50 dark:hover:bg-slate-800 transition">
                 <Plus className="mx-auto text-emerald-600 mb-1.5" size={18} />

@@ -11,7 +11,7 @@
  *   Fetches: GET /api/documents/{id}  → document.student_explanation (Markdown)
  */
 
-import React, { useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
@@ -231,6 +231,8 @@ export default function DocumentExplanationPage() {
   const [documentData, setDocumentData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [copied, setCopied] = useState(false);
+  const [generating, setGenerating] = useState(false);
+  const [generationError, setGenerationError] = useState("");
 
   // Inject prose CSS once
   useEffect(() => {
@@ -260,8 +262,51 @@ export default function DocumentExplanationPage() {
     })();
   }, [id, navigate, addToast]);
 
+  // Auto-generate explanation if missing
+  useEffect(() => {
+    if (!id || !documentData || documentData.student_explanation) return;
+    (async () => {
+      try {
+        setGenerating(true);
+        setGenerationError("");
+        const result = await uploadService.generateExplanation(id);
+        setDocumentData((prev) => ({ ...prev, student_explanation: result.explanation }));
+        addToast("AI explanation generated successfully", "success");
+      } catch (err) {
+        const msg = err?.response?.data?.message || err?.response?.data?.detail || err?.message || "Failed to generate explanation";
+        setGenerationError(msg);
+        console.error("Explanation generation failed", err);
+      } finally {
+        setGenerating(false);
+      }
+    })();
+  }, [id, documentData?.student_explanation, addToast, navigate]);
+
   const explanation = documentData?.student_explanation || "";
 
+  const headings = explanation
+    .split("\n")
+    .filter((line) => /^#{1,2}\s+/.test(line))
+    .map((line) => {
+      const match = line.match(/^(#{1,2})\s+(.+)/);
+      if (!match) return null;
+      const level = match[1].length;
+      const text = match[2].replace(/[#*_`]/g, "").trim();
+      const id = text
+        .toLowerCase()
+        .replace(/[^\w\s-]/g, "")
+        .replace(/\s+/g, "-")
+        .replace(/-+/g, "-");
+      return { level, text, id };
+    })
+    .filter(Boolean);
+
+  const scrollToHeading = (id) => {
+    const el = document.getElementById(id);
+    if (el) {
+      el.scrollIntoView({ behavior: "smooth", block: "start" });
+    }
+  };
   // Copy to clipboard
   const handleCopy = async () => {
     if (!explanation) return;
@@ -384,12 +429,44 @@ export default function DocumentExplanationPage() {
 
       {/* ── Markdown body ────────────────────────────────────────────────── */}
       <div className="max-w-4xl mx-auto px-4 sm:px-8 pb-24 pt-4">
+        {headings.length > 1 && (
+          <div className="mb-8 bg-white rounded-2xl shadow-sm border border-slate-100 px-6 sm:px-10 py-6">
+            <h2 className="text-sm font-bold text-slate-400 uppercase tracking-wider mb-4">
+              Table of Contents
+            </h2>
+            <nav className="flex flex-wrap gap-2">
+              {headings.map((h) => (
+                <button
+                  key={h.id}
+                  onClick={() => scrollToHeading(h.id)}
+                  className={`text-left px-3 py-1.5 rounded-lg text-sm font-medium transition ${
+                    h.level === 1
+                      ? "bg-indigo-50 text-indigo-700 hover:bg-indigo-100"
+                      : "bg-slate-50 text-slate-600 hover:bg-slate-100"
+                  }`}
+                >
+                  {h.text}
+                </button>
+              ))}
+            </nav>
+          </div>
+        )}
         {explanation ? (
           <div
             className="ai-prose bg-white rounded-2xl shadow-sm border border-slate-100 px-6 sm:px-10 py-8 sm:py-10"
             style={{ minHeight: "60vh" }}
           >
-            <ReactMarkdown remarkPlugins={[remarkGfm]}>
+            <ReactMarkdown
+              remarkPlugins={[remarkGfm]}
+              components={{
+                h1: ({ ...props }) => (
+                  <h1 id={props.children?.toString().replace(/[#*_`]/g, "").trim().toLowerCase().replace(/[^\w\s-]/g, "").replace(/\s+/g, "-").replace(/-+/g, "-")} {...props} />
+                ),
+                h2: ({ ...props }) => (
+                  <h2 id={props.children?.toString().replace(/[#*_`]/g, "").trim().toLowerCase().replace(/[^\w\s-]/g, "").replace(/\s+/g, "-").replace(/-+/g, "-")} {...props} />
+                ),
+              }}
+            >
               {explanation}
             </ReactMarkdown>
           </div>
@@ -400,13 +477,24 @@ export default function DocumentExplanationPage() {
               <AlertCircle size={32} className="text-amber-500" />
             </div>
             <p className="text-lg font-semibold text-slate-700">
-              AI Explanation Unavailable
+              {generating ? "Generating AI Explanation..." : "AI Explanation Unavailable"}
             </p>
-            <p className="text-sm text-slate-500 max-w-sm">
-              Please ensure <code className="bg-slate-100 px-1 rounded">GEMINI_API_KEY</code> is
-              configured in <code className="bg-slate-100 px-1 rounded">backend/.env</code> and
-              re-upload your document.
-            </p>
+            {generationError ? (
+              <div className="max-w-sm rounded-xl border border-red-200 bg-red-50 p-4 text-left">
+                <p className="text-sm font-semibold text-red-700 mb-1">Generation failed</p>
+                <p className="text-sm text-red-600 whitespace-pre-wrap break-words">{generationError}</p>
+              </div>
+            ) : !generating ? (
+              <p className="text-sm text-slate-500 max-w-sm">
+                The AI study guide could not be generated. This may be due to API quota limits,
+                billing requirements, or a temporary service issue. Please try again later.
+              </p>
+            ) : null}
+            {generating && (
+              <div className="mt-2">
+                <Loader size="sm" />
+              </div>
+            )}
           </div>
         )}
       </div>

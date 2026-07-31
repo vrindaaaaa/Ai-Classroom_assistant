@@ -4,7 +4,6 @@ const navLinks = [
   { to: "/dashboard", label: "Dashboard" },
   { to: "/upload", label: "Upload" },
   { to: "/chat", label: "Chat" },
-  { to: "/ocr", label: "OCR" },
   { to: "/quizzes", label: "Quizzes" },
   { to: "/planner", label: "Planner" },
   { to: "/analytics", label: "Analytics" },

@@ -9,9 +9,11 @@ import ChatPage from "./pages/ChatPage";
 import Dashboard from "./pages/Dashboard";
 import LandingPage from "./pages/LandingPage";
 import Login from "./pages/Login";
-import OCRPage from "./pages/OCRPage";
 import PlannerPage from "./pages/PlannerPage";
+import QuizDashboard from "./pages/QuizDashboard";
 import QuizPage from "./pages/QuizPage";
+import QuizResultPage from "./pages/QuizResultPage";
+import QuizHistoryPage from "./pages/QuizHistoryPage";
 import Signup from "./pages/Signup";
 import UploadPage from "./pages/UploadPage";
 import DocumentTextPage from "./pages/DocumentTextPage";
@@ -38,8 +40,11 @@ function App() {
               <Route path="/documents/:id/extracted" element={<DocumentTextPage />} />
               <Route path="/documents/:id/explanation" element={<DocumentExplanationPage />} />
               <Route path="/chat" element={<ChatPage />} />
-              <Route path="/ocr" element={<OCRPage />} />
-              <Route path="/quizzes" element={<QuizPage />} />
+              <Route path="/quizzes" element={<QuizDashboard />} />
+              <Route path="/quizzes/generate" element={<QuizPage />} />
+              <Route path="/quizzes/:id" element={<QuizPage />} />
+              <Route path="/quizzes/:id/result" element={<QuizResultPage />} />
+              <Route path="/quiz-history" element={<QuizHistoryPage />} />
               <Route path="/planner" element={<PlannerPage />} />
               <Route path="/analytics" element={<AnalyticsPage />} />
               <Route path="/settings" element={<SettingsPage />} />
